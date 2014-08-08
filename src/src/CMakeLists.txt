@@ -1,11 +1,9 @@
 project(src)
 
+add_library(fs File.cpp)
 
-#	Google-glog
-find_package(Glog REQUIRED)
-include_directories(${GLOG_INCLUDE_DIRS})
-
-add_executable(fs main.cpp)
+add_executable(exe main.cpp)
+target_link_libraries(exe ${GLOG_LIBRARIES})
 
 
 
