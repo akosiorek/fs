@@ -39,7 +39,15 @@ bool File::isOpen() const {
 
 void File::create() {
 
-	file_ = fopen(path_.c_str(), "wb+");
+	if(isOpen_) {
+		THROW_LOGIC("This file is already opened");
+	}
+
+	if(path_.size() == 0) {
+		THROW_LOGIC("Cannot create a file under an empty path");
+	}
+
+	file_ = fopen(path_.c_str(), "wbx+");
 	if(!file_) {
 		THROW_RUNTIME("Couldn't create a file at " + path_);
 	}
@@ -54,6 +62,12 @@ void File::create(const std::string& path) {
 }
 
 void File::open() {
+	if(isOpen_) {
+		THROW_LOGIC("This file is already opened");
+	}
+	if(path_.size() == 0) {
+		THROW_LOGIC("Cannot open a file under an empty path");
+	}
 
 	file_ = fopen(path_.c_str(), "rb+");
 	if(!file_) {
@@ -73,6 +87,8 @@ void File::open(const std::string& path) {
 
 void File::close() {
 
+	if(!isOpen_) return;
+
 	isOpen_ = false;
 	size_ = 0;
 	fclose(file_);
@@ -90,7 +106,12 @@ void File::write(const std::string& str, size_t offset) {
 	if(!isOpen_) {
 		THROW_LOGIC("Cannot write to a close file");
 	}
-
+	if(maxSize_ > 0 && str.size() + offset > maxSize_) {
+		THROW_RUNTIME("Size + offset > maxSize");
+	}
+	if(ftell(file_) != offset) {
+		fseek(file_, offset, SEEK_SET);
+	}
 	size_t dataSize = fwrite(str.c_str(), 1, str.size(), file_);
 	if(dataSize != str.size()) {
 		THROW_RUNTIME("Couldn't write " + std::to_string(str.size()) + " bytes to file " + path_);
@@ -102,9 +123,15 @@ std::string File::read(size_t size, size_t offset) const {
 	if(!isOpen_) {
 		THROW_LOGIC("Cannot read from a close file");
 	}
+	if(offset >= size_) {
+		THROW_RUNTIME("Cannot read beyond the end of file");
+	}
 
 	if(buffer_.size() < size) {
 		buffer_.resize(size);
+	}
+	if(ftell(file_) != offset) {
+		fseek(file_, offset, SEEK_SET);
 	}
 	size_t readBytes = fread(buffer_.data(), 1, size, file_);
 	return std::string(buffer_.data(), readBytes);
@@ -122,8 +149,8 @@ void File::writeChar(char c, size_t offset) {
 	if(!isOpen_) {
 		THROW_LOGIC("Cannot write to a close file");
 	}
-	if(maxSize_ > 0 && offset > maxSize_) {
-		THROW_LOGIC("Offset > maxSize");
+	if(maxSize_ > 0 && offset >= maxSize_) {
+		THROW_RUNTIME("Offset >= maxSize");
 	}
 	fseek(file_, offset, SEEK_SET);
 	fputc(static_cast<int>(c), file_);
@@ -136,11 +163,18 @@ const char File::readChar(size_t offset) const {
 	if(!isOpen_) {
 		THROW_LOGIC("Cannot read from a close file");
 	}
-	if(offset > size_) {
-		THROW_LOGIC("Offset > size");
+	if(offset >= size_) {
+		THROW_RUNTIME("Offset > size");
 	}
 	fseek(file_, offset, SEEK_SET);
 	return static_cast<char>(fgetc(file_));
+}
+
+void File::flush() {
+
+	if(!isOpen_) return;
+
+	fflush(file_);
 }
 
 size_t File::getMaxSize() const {

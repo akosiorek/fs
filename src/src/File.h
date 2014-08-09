@@ -31,6 +31,8 @@ public:
 
 	void writeChar(char c, size_t offset);
 	const char readChar(size_t offset) const;
+
+	void flush();
 	size_t getMaxSize() const;
 	void setMaxSize(size_t maxSize);
 
@@ -38,7 +40,7 @@ private:
 	size_t size_;
 	bool isOpen_;
 	std::string path_;
-	FILE* file_;
+	std::FILE* file_;
 	mutable std::vector<char> buffer_;
 	size_t maxSize_;
 
